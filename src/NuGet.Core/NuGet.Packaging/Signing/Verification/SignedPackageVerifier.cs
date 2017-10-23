@@ -28,7 +28,7 @@ namespace NuGet.Packaging.Signing
         {
             var valid = false;
             var trustResults = new List<SignatureVerificationResult>();
-
+            var errorMessage = "";
             var isSigned = await package.IsSignedAsync(token);
 
             if (isSigned)
@@ -47,6 +47,7 @@ namespace NuGet.Packaging.Signing
                 }
 
                 valid = signaturesAreValid;
+                
             }
             else if (_settings.AllowUnsigned)
             {
@@ -58,7 +59,12 @@ namespace NuGet.Packaging.Signing
                 trustResults.Add(SignatureVerificationResult.UnsignedPackageResult(SignatureVerificationStatus.Invalid, new List<SignatureIssue>{ SignatureIssue.InvalidInputError(Strings.ErrorPackageNotSigned) }));
             }
 
-            return new VerifySignaturesResult(valid, trustResults);
+            if (!valid)
+            {
+                errorMessage = $"package signature is invalid.";
+            }
+
+            return new VerifySignaturesResult(valid, errorMessage, trustResults);
         }
 
         /// <summary>

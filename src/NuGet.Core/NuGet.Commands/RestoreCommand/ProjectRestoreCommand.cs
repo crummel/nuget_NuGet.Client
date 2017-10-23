@@ -15,6 +15,7 @@ using NuGet.Frameworks;
 using NuGet.LibraryModel;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
+using NuGet.Packaging.Signing;
 using NuGet.Repositories;
 using NuGet.RuntimeModel;
 
@@ -242,23 +243,34 @@ namespace NuGet.Commands
         {
             var packageIdentity = new PackageIdentity(installItem.Library.Name, installItem.Library.Version);
 
-            var versionFolderPathContext = new VersionFolderPathContext(
+            var signedPackageVerifier = new SignedPackageVerifier(
+                            SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
+                            SignedPackageVerifierSettings.Default);
+
+            var packageExtractionV3Context = new PackageExtractionV3Context(
                 packageIdentity,
                 _request.PackagesDirectory,
                 _logger,
                 _request.PackageSaveMode,
-                _request.XmlDocFileSaveMode);
-
-            using (var packageDependency = await installItem.Provider.GetPackageDownloaderAsync(
-                packageIdentity,
-                _request.CacheContext,
-                _logger,
-                token))
+                _request.XmlDocFileSaveMode,
+                signedPackageVerifier);
+            try
             {
-                await PackageExtractor.InstallFromSourceAsync(
-                    packageDependency,
-                    versionFolderPathContext,
-                    token);
+                using (var packageDependency = await installItem.Provider.GetPackageDownloaderAsync(
+                    packageIdentity,
+                    _request.CacheContext,
+                    _logger,
+                    token))
+                {
+                    await PackageExtractor.InstallFromSourceAsync(
+                        packageDependency,
+                        packageExtractionV3Context,
+                        token);
+                }
+            }
+            catch (SignatureException e)
+            {
+                await _logger.LogAsync(RestoreLogMessage.CreateError(NuGetLogCode.NU1410, e.Message, packageIdentity.ToString()));
             }
         }
 
