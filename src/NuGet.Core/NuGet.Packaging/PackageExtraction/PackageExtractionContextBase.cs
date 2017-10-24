@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
 using System;
 using NuGet.Common;
 using NuGet.Packaging.Signing;
@@ -18,8 +21,7 @@ namespace NuGet.Packaging
             PackageSaveMode packageSaveMode,
             XmlDocFileSaveMode xmlDocFileSaveMode,
             ILogger logger,
-            SignedPackageVerifier signedPackageVerifier
-            )
+            SignedPackageVerifier signedPackageVerifier)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             PackageSaveMode = packageSaveMode;

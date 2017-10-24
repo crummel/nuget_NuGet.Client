@@ -455,7 +455,7 @@ namespace NuGet.Commands.FuncTest
                             logger,
                             PackageSaveMode.Defaultv3,
                             XmlDocFileSaveMode.None,
-                            null),
+                            signedPackageVerifier: null),
                         CancellationToken.None);
                 }
 

@@ -1181,8 +1181,6 @@ namespace NuGet.Commands.Test
             // Arrange
             var sources = new List<PackageSource>();
 
-            // Both TxMs reference packageA, but they are different types.
-            // Verify that the reference does not show up under libraries.
             var project1Json = @"
             {
               ""version"": ""1.0.0"",

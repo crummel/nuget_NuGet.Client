@@ -150,7 +150,7 @@ namespace NuGet.ProjectManagement
                             SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
                             SignedPackageVerifierSettings.Default);
 
-                        packageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier: signedPackageVerifier);
+                        packageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier);
                     }
 
                     // 2. Check if the Package already exists at root, if so, return false
@@ -408,7 +408,7 @@ namespace NuGet.ProjectManagement
                             SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
                             SignedPackageVerifierSettings.Default);
 
-                packageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier: signedPackageVerifier);
+                packageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier);
             }
 
             var copiedSatelliteFiles = await PackageExtractor.CopySatelliteFilesAsync(

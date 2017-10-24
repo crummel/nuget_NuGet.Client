@@ -306,7 +306,7 @@ namespace NuGet.PackageManagement
                            SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
                            SignedPackageVerifierSettings.Default);
 
-                nuGetProjectContext.PackageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier: signedPackageVerifier);
+                nuGetProjectContext.PackageExtractionContext = new PackageExtractionV2Context(new LoggerAdapter(nuGetProjectContext), signedPackageVerifier);
             }
 
             nuGetProjectContext.PackageExtractionContext.CopySatelliteFiles = false;

@@ -202,9 +202,9 @@ namespace NuGet.Protocol.Core.Types
                             packageIdentity,
                             source,
                             logger,
-                            packageSaveMode: packageSaveMode,
-                            xmlDocFileSaveMode: PackageExtractionBehavior.XmlDocFileSaveMode,
-                            signedPackageVerifier: signedPackageVerifier);
+                            packageSaveMode,
+                            PackageExtractionBehavior.XmlDocFileSaveMode,
+                            signedPackageVerifier);
 
                         using (var packageDownloader = new LocalPackageArchiveDownloader(
                             packagePath,
