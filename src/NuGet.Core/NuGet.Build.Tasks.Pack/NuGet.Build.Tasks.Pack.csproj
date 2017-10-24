@@ -53,7 +53,7 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <Target Name="PublishAndMergePackNupkg" AfterTargets="AfterBuild" Condition="'$(TargetFramework)' != '' AND '$(IsXPlat)' == 'false' AND '$(BuildingInsideVisualStudio)' != 'true'">
+  <Target Name="PublishAndMergePackNupkg" AfterTargets="AfterBuild" Condition="'$(TargetFramework)' != '' AND '$(IsXPlat)' == 'false' AND '$(BuildingInsideVisualStudio)' != 'true' AND '$(DotNetBuildFromSource)' != 'true'">
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Publish;ILMergeNuGetPack" />
   </Target>
 
