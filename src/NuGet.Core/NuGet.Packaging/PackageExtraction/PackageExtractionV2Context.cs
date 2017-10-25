@@ -17,7 +17,7 @@ namespace NuGet.Packaging
         /// </summary>
         public bool UseLegacyPackageInstallPath { get; set; }
 
-        public PackageExtractionV2Context(ILogger logger, SignedPackageVerifier signedPackageVerifier) :
+        public PackageExtractionV2Context(ILogger logger, ISignedPackageVerifier signedPackageVerifier) :
             base(PackageSaveMode.Defaultv2,
                 PackageExtractionBehavior.XmlDocFileSaveMode,
                 logger,

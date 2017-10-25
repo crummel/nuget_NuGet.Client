@@ -13,7 +13,7 @@ namespace NuGet.Packaging.Signing
     /// <summary>
     /// Loads trust providers and verifies package signatures.
     /// </summary>
-    public class SignedPackageVerifier
+    public class SignedPackageVerifier : ISignedPackageVerifier
     {
         private readonly List<ISignatureVerificationProvider> _verificationProviders;
         private readonly SignedPackageVerifierSettings _settings;

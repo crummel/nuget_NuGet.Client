@@ -22,7 +22,7 @@ namespace NuGet.Packaging
             ILogger logger,
             PackageSaveMode packageSaveMode,
             XmlDocFileSaveMode xmlDocFileSaveMode,
-            SignedPackageVerifier signedPackageVerifier) : base(
+            ISignedPackageVerifier signedPackageVerifier) : base(
                 packageSaveMode,
                 xmlDocFileSaveMode,
                 logger,
@@ -57,7 +57,7 @@ namespace NuGet.Packaging
             ILogger logger,
             PackageSaveMode packageSaveMode,
             XmlDocFileSaveMode xmlDocFileSaveMode,
-            SignedPackageVerifier signedPackageVerifier): this(
+            ISignedPackageVerifier signedPackageVerifier): this(
                 package,
                 packagesDirectory,
                 isLowercasePackagesDirectory: true,

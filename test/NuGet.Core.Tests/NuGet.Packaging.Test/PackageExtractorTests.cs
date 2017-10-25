@@ -15,8 +15,10 @@ using Moq;
 using NuGet.Common;
 using NuGet.Packaging.Core;
 using NuGet.Packaging.Signing;
+using NuGet.Packaging.Test.SigningTests;
 using NuGet.Test.Utility;
 using NuGet.Versioning;
+using Test.Utility.Signing;
 using Xunit;
 
 namespace NuGet.Packaging.Test
@@ -1728,6 +1730,7 @@ namespace NuGet.Packaging.Test
             var nuspecFileName = "a.nuspec";
             var packageDownloader = new Mock<IPackageDownloader>(MockBehavior.Strict);
             var coreReader = new Mock<IAsyncPackageCoreReader>(MockBehavior.Strict);
+            var signedReader = new Mock<ISignedPackageReader>(MockBehavior.Strict);
 
             packageDownloader.Setup(x => x.CopyNupkgFileToAsync(It.IsNotNull<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -1735,6 +1738,7 @@ namespace NuGet.Packaging.Test
                 .ReturnsAsync("hash");
             packageDownloader.SetupGet(x => x.CoreReader)
                 .Returns(coreReader.Object);
+            packageDownloader.SetupGet(x => x.SignedPackageReader).Returns(signedReader.Object);
             packageDownloader.Setup(x => x.Dispose());
 
             coreReader.Setup(x => x.GetNuspecFileAsync(It.IsAny<CancellationToken>()))
@@ -1795,6 +1799,7 @@ namespace NuGet.Packaging.Test
             var actualNuspecFileName = intendedNuspecFileName.ToUpperInvariant();
             var packageDownloader = new Mock<IPackageDownloader>(MockBehavior.Strict);
             var coreReader = new Mock<IAsyncPackageCoreReader>(MockBehavior.Strict);
+            var signedReader = new Mock<ISignedPackageReader>(MockBehavior.Strict);
 
             packageDownloader.Setup(x => x.CopyNupkgFileToAsync(It.IsNotNull<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -1802,6 +1807,7 @@ namespace NuGet.Packaging.Test
                 .ReturnsAsync("hash");
             packageDownloader.SetupGet(x => x.CoreReader)
                 .Returns(coreReader.Object);
+            packageDownloader.SetupGet(x => x.SignedPackageReader).Returns(signedReader.Object);
             packageDownloader.Setup(x => x.Dispose());
 
             coreReader.Setup(x => x.GetNuspecFileAsync(It.IsAny<CancellationToken>()))
@@ -1862,29 +1868,18 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Trusted,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
+
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(true));
 
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
 
                 using (var packageDownloader = new LocalPackageArchiveDownloader(
                     packageFileInfo.FullName,
@@ -1900,7 +1895,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nuspec | PackageSaveMode.Files,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None);
 
                     // Assert
@@ -1917,29 +1912,17 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
-
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
-
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
-                var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
+
+                var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
 
                 using (var packageDownloader = new LocalPackageArchiveDownloader(
                     packageFileInfo.FullName,
@@ -1956,7 +1939,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nuspec | PackageSaveMode.Files,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None));
                 }
             }
@@ -1968,29 +1951,18 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
+
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
 
                 using (var packageDownloader = new LocalPackageArchiveDownloader(
                     packageFileInfo.FullName,
@@ -2006,7 +1978,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nupkg,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None);
 
                     // Assert
@@ -2023,29 +1995,18 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Trusted,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
+
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(true));
 
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
 
                 using (var fileStream = File.OpenRead(packageFileInfo.FullName))
                 {
@@ -2058,7 +2019,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nuspec | PackageSaveMode.Files,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None);
 
                     // Assert
@@ -2075,29 +2036,18 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
+
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
 
                 using (var fileStream = File.OpenRead(packageFileInfo.FullName))
                 {
@@ -2110,7 +2060,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nupkg,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None);
 
                     // Assert
@@ -2127,29 +2077,18 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var resolver = new VersionFolderPathResolver(root);
 
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
+
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var packageFileInfo = SimpleTestPackageUtility.CreateFullPackage(root, nupkg);
 
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                    SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                    SignedPackageVerifierSettings.Default);
 
                 using (var fileStream = File.OpenRead(packageFileInfo.FullName))
                 {
@@ -2163,7 +2102,7 @@ namespace NuGet.Packaging.Test
                             NullLogger.Instance,
                             packageSaveMode: PackageSaveMode.Nuspec | PackageSaveMode.Files,
                             xmlDocFileSaveMode: XmlDocFileSaveMode.None,
-                            signedPackageVerifier: signedPackageVerifier),
+                            signedPackageVerifier: signedPackageVerifier.Object),
                         CancellationToken.None));
                 }
             }
@@ -2175,23 +2114,12 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Trusted,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(true));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2200,7 +2128,7 @@ namespace NuGet.Packaging.Test
 
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nuspec | PackageSaveMode.Files;
 
                     // Act
@@ -2224,23 +2152,12 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2249,7 +2166,7 @@ namespace NuGet.Packaging.Test
 
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nupkg;
 
                     // Act & Assert
@@ -2269,23 +2186,12 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Trusted,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(true));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2295,7 +2201,7 @@ namespace NuGet.Packaging.Test
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 using (var packageReader = new PackageArchiveReader(packageStream))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nuspec | PackageSaveMode.Files;
 
                     // Act
@@ -2319,23 +2225,11 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
-
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2345,7 +2239,7 @@ namespace NuGet.Packaging.Test
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 using (var packageReader = new PackageArchiveReader(packageStream))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nupkg;
 
                     // Act & Assert
@@ -2365,23 +2259,12 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Trusted,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(true));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2391,7 +2274,7 @@ namespace NuGet.Packaging.Test
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 using (var packageReader = new PackageArchiveReader(packageStream))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nuspec | PackageSaveMode.Files;
 
                     // Act
@@ -2408,6 +2291,7 @@ namespace NuGet.Packaging.Test
                     Assert.True(File.Exists(Path.Combine(installPath, "lib", "net45", "A.dll")));
                 }
             }
+
         }
 
         [Fact]
@@ -2416,23 +2300,12 @@ namespace NuGet.Packaging.Test
             // Arrange
             using (var root = TestDirectory.Create())
             {
-                var signature = new Signature()
-                {
-                    DisplayName = "Test signer",
-                    TestTrust = SignatureVerificationStatus.Invalid,
-                    Type = SignatureType.Author
-                };
-
                 var nupkg = new SimpleTestPackageContext("A", "1.0.0");
 
-                if (signature != null)
-                {
-                    nupkg.Signatures.Add(signature);
-                }
+                var signedPackageVerifier = new Mock<ISignedPackageVerifier>(MockBehavior.Strict);
 
-                var signedPackageVerifier = new SignedPackageVerifier(
-                   SignatureVerificationProviderFactory.GetSignatureVerificationProviders(),
-                   SignedPackageVerifierSettings.Default);
+                signedPackageVerifier.Setup(x => x.VerifySignaturesAsync(It.IsAny<ISignedPackageReader>(), It.IsAny<ILogger>(), It.IsAny<CancellationToken>())).
+                    ReturnsAsync(new VerifySignaturesResult(false));
 
                 var resolver = new PackagePathResolver(root);
                 var identity = new PackageIdentity("A", new NuGetVersion("1.0.0"));
@@ -2442,7 +2315,7 @@ namespace NuGet.Packaging.Test
                 using (var packageStream = File.OpenRead(packageFileInfo.FullName))
                 using (var packageReader = new PackageArchiveReader(packageStream))
                 {
-                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier);
+                    var packageExtractionV2Context = new PackageExtractionV2Context(NullLogger.Instance, signedPackageVerifier.Object);
                     packageExtractionV2Context.PackageSaveMode = PackageSaveMode.Nupkg;
 
                     // Act & Assert
@@ -2456,6 +2329,7 @@ namespace NuGet.Packaging.Test
                 }
             }
         }
+
         private string StatPermissions(string path)
         {
             string permissions;

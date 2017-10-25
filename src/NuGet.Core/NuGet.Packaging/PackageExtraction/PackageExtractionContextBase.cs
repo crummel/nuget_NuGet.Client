@@ -15,13 +15,13 @@ namespace NuGet.Packaging
 
         public XmlDocFileSaveMode XmlDocFileSaveMode { get; set; }
 
-        public SignedPackageVerifier SignedPackageVerifier { get; }
+        public ISignedPackageVerifier SignedPackageVerifier { get; }
 
         public PackageExtractionContextBase(
             PackageSaveMode packageSaveMode,
             XmlDocFileSaveMode xmlDocFileSaveMode,
             ILogger logger,
-            SignedPackageVerifier signedPackageVerifier)
+            ISignedPackageVerifier signedPackageVerifier)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             PackageSaveMode = packageSaveMode;
